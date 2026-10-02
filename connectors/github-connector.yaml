@@ -3,7 +3,8 @@
 #
 # Create the Text Secret first:
 #   id: github-pat
-#   value: a GitHub PAT (or fine-grained token) that can read your fork
+#   value: a GitHub PAT (or fine-grained token). Optional for a public
+#   repo (it avoids anonymous rate limits). Required once the repo is private.
 #
 # Then: Project Settings → Connectors → GitHub → paste this YAML.
 # Account scope (url: https://github.com) so the same connector can clone

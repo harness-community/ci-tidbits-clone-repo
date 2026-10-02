@@ -4,28 +4,23 @@
 
 ---
 
-## What is a secure clone?
+## Clone the codebase
 
-CI has to fetch application code before it can build or test it. The unsafe shortcut is to put a token in the pipeline:
+Before you can build, push, or deploy an application, the build machine needs a copy of the code. In Harness CI that copy is the pipeline **codebase**: the Git repository a Build stage clones when **Clone Codebase** is enabled.
 
-```sh
-# Do not do this. The token lands in YAML, shell history, and step logs.
-git clone https://<USER>:ghp_xxxxx@github.com/your-org/your-repo.git
-```
+This tidbit gets that copy with a GitHub connector. `cloneCodebase: true` clones **this** repo into the workspace before any step runs. The pipeline stores `connectorRef`. The token, if you use one, stays in a Harness secret, and Harness masks it in logs.
 
-A Harness **connector** is a reusable login. The pipeline stores a `connectorRef`. The personal access token stays in a Harness secret. At runtime Harness clones the repo and masks the secret in logs.
-
-This tidbit uses one GitHub connector to clone **this** repo into a Harness Cloud build, then checks that the workspace has the app and that the git remote URL has no embedded credential.
+This repository is public, so a clone works without a personal access token. GitHub rate-limits anonymous traffic. A connector with a PAT authenticates the request and avoids that limit. The same PAT is what a private repository requires — the pipeline YAML does not change. See [Next steps](#next-steps).
 
 | Piece | Role |
 |---|---|
 | Text secret `github-pat` | GitHub PAT (or fine-grained token) |
 | GitHub connector `githubconnector` | Uses that secret over HTTPS |
-| Pipeline codebase | `connectorRef: githubconnector` and `cloneCodebase: true` |
+| `cloneCodebase: true` | Clones the pipeline codebase into the workspace root before any step |
 | Verify step | Fails if the remote URL contains a token |
 | App step | Runs the unit tests that arrived with the clone |
 
-Docs: [codebase configuration](https://developer.harness.io/docs/continuous-integration/use-ci/codebase-configuration/create-and-configure-a-codebase/), [connectors](https://developer.harness.io/harness-platform/3.0/in-harness-3.0/connectors).
+Docs: [Configure a codebase](https://developer.harness.io/continuous-integration/use-harness-ci/use-harness-ci/codebase-configuration/create-and-configure-a-codebase), [connectors](https://developer.harness.io/harness-platform/3.0/in-harness-3.0/connectors).
 
 ---
 
@@ -35,20 +30,20 @@ Before you start, make sure you have:
 
 - A Harness account with a **Project** (note its org + project identifiers).
 - Harness Cloud build credits (default on Harness-hosted runners). No delegate is required for this pipeline.
-- A GitHub account and a PAT (or fine-grained token) that can read your fork of this repo. `Contents: Read` is enough.
+- A GitHub account. A PAT (or fine-grained token with `Contents: Read`) is optional while this repo is public. Create one for the connector so the clone is authenticated.
 
 ---
 
-## Step 1 — Fork this repo
+## Step 1 — Review this repo
 
-Fork the repo into your own GitHub account so the connector can read it. The application under `app/` is the code the pipeline fetches. No local Python setup is required.
+The application under `app/` is the code the pipeline fetches. No local Python setup is required. Point **Repository Name** at this public repo, or fork it first if you want a copy you can mark private later.
 
 ```
 .
 ├── .harness/
-│   └── pipeline.yaml       ← CI stage; cloneCodebase uses the connector
+│   └── pipeline.yaml       ← CI stage with cloneCodebase: true
 ├── connectors/
-│   └── github.yaml         ← GitHub connector (secret id only)
+│   └── github-connector.yaml  ← GitHub connector (secret id only)
 ├── app/
 │   ├── __init__.py
 │   └── main.py             ← sample app the clone must deliver
@@ -61,14 +56,14 @@ Fork the repo into your own GitHub account so the connector can read it. The app
 
 ## Step 2 — Secret and connector
 
-1. **Secret.** Project Settings → Secrets → Text. Id `github-pat`. Paste the GitHub token. Do not commit the token, and do not put it in pipeline YAML.
+1. **Secret.** Project Settings → Secrets → Text. Id `github-pat`. Paste the GitHub token. A public repo can be cloned without it; the token authenticates the connector so GitHub does not treat the clone as anonymous. Do not commit the token, and do not put it in pipeline YAML.
 
-2. **GitHub connector.** Project Settings → Connectors → New Connector → GitHub, or paste [`connectors/github.yaml`](./connectors/github.yaml). Replace every `# REPLACE:` line.
+2. **GitHub connector.** Project Settings → Connectors → New Connector → GitHub, or paste [`connectors/github-connector.yaml`](./connectors/github-connector.yaml). Replace every `# REPLACE:` line.
 
    - URL `https://github.com`, connection type **Account** (so `repoName` is chosen by the pipeline, not baked into the connector).
    - Authentication: **Username** and **Token** → secret `github-pat`.
    - **Connect through Harness Platform** (`executeOnDelegate: false`). That is what Harness Cloud uses to clone.
-   - Test the connection against a repository the token can read (your fork).
+   - Test the connection against a repository the token can read.
 
 ---
 
@@ -86,12 +81,12 @@ Fork the repo into your own GitHub account so the connector can read it. The app
 ## Step 4 — Run the pipeline (expect a GREEN build)
 
 1. Click **Run**.
-2. For **Repository Name**, enter your fork: `your-user/ci-tidbits-clone-repo`.
+2. For **Repository Name**, enter `owner/ci-tidbits-clone-repo` — this repo, or your fork.
 3. Keep branch `main`. Click **Run Pipeline**.
 
-Harness clones the repo with the connector **before** the steps run. Then:
+Harness clones the codebase with the connector **before** the steps run. Then:
 
-- **Verify connector clone** lists the workspace, requires `app/main.py`, and fails if `git remote -v` contains `@` credentials or a `ghp_` / `github_pat_` token.
+- **Verify codebase clone** requires `app/main.py` at the workspace root and fails if `git remote -v` contains `@` credentials or a `ghp_` / `github_pat_` token.
 - **Run cloned app** executes `python -m unittest tests.test_main` and prints the greeting from the cloned `app/main.py`.
 
 **Green is the correct outcome.** The build fetched code with a credential that never appeared in Git.
@@ -121,18 +116,30 @@ stages:
         runtime:
           type: Cloud
           spec: {}
-        execution:
-          steps:
-            - step:
-                name: Verify connector clone
-                type: Run
-                spec:
-                  command: |-
-                    test -f app/main.py
-                    git remote -v
 ```
 
-`cloneCodebase: true` is the clone. You do not add a `git clone` command. A later [Git Clone step](https://developer.harness.io/docs/continuous-integration/use-ci/codebase-configuration/git-clone-step/) is only for a *second* repository in the same stage.
+`cloneCodebase: true` is the clone. You do not add a `git clone` command.
+
+### When you need a Git Clone step
+
+This pipeline does not use one. A [Git Clone step](https://developer.harness.io/continuous-integration/use-harness-ci/use-harness-ci/codebase-configuration/git-clone-step) is for a **second** repository in the same stage — manifests, a library, a Dockerfile that lives somewhere else. It is a step, so it runs when the pipeline reaches it, and it has its own `connectorRef`, `repoName`, and branch. Put it in a `cloneDirectory` other than `/harness`, which is reserved for the codebase checkout.
+
+```yaml
+- step:
+    type: GitClone
+    name: clone second repo
+    identifier: clone_second_repo
+    spec:
+      connectorRef: githubconnector
+      repoName: your-org/other-repo
+      build:
+        type: branch
+        spec:
+          branch: main
+      cloneDirectory: other-repo
+```
+
+`cloneCodebase: false` skips the automatic codebase clone on that stage. Use it when the stage should leave the pipeline codebase alone. The connector is still how either path authenticates.
 
 ---
 
@@ -140,20 +147,20 @@ stages:
 
 **Connector test fails.** Confirm secret id `github-pat`, the GitHub username, and that the token can read the test repo. For Harness Cloud, the connector must connect through the Harness Platform (`executeOnDelegate: false`).
 
-**Clone step fails with "repository not found" or 404.** `repoName` must be `owner/name` of the fork, not the connector URL. An Account connector does not imply a repository.
+**Clone fails with "repository not found" or 404.** `repoName` must be `owner/name`, not the connector URL. An Account connector does not imply a repository.
 
 **Verify step fails on the remote URL.** Something cloned with a token embedded in the URL (`https://user:token@github.com/...`). Point `connectorRef` at `githubconnector` and leave the clone to `cloneCodebase`.
 
 **Do not print `git config`.** A credential helper or `http.extraheader` can hold the token for the clone. `git remote -v` is the check; dumping config can leak the secret into the build log.
 
-**Public repo, no token.** A public repository can still use this connector. The point of the tidbit is that the pipeline never carries the credential, which is what you need the moment the repo is private.
+**Anonymous clone is rate-limited.** This repo is public, so a token is not required to read it. GitHub still throttles unauthenticated clones. Keep `github-pat` on the connector.
 
 ---
 
-## What's next?
+## Next steps
 
-- **Private repo.** Flip the fork to private and re-run. The same secret and connector keep working; the YAML does not change.
-- **Second repository.** Add a `GitClone` step with its own `connectorRef` when one stage needs application code and a separate manifest or library repo.
+- **Private repo.** Fork this repo, mark the fork private, and re-run with that `owner/name`. An anonymous clone fails. The PAT on `githubconnector` still works, and the pipeline YAML does not change.
+- **Second repository.** Add a Git Clone step (see above) when one stage needs this codebase and another repo.
 - **GitHub App.** Swap the PAT for a GitHub App connector when you want short-lived installation tokens instead of a long-lived PAT.
 - **SSH.** Use an SSH Git connector and a Harness SSH key secret when the provider does not allow HTTPS tokens.
 
@@ -161,7 +168,7 @@ stages:
 
 ## Resources
 
-- [Configure a codebase](https://developer.harness.io/docs/continuous-integration/use-ci/codebase-configuration/create-and-configure-a-codebase/)
-- [Git Clone step](https://developer.harness.io/docs/continuous-integration/use-ci/codebase-configuration/git-clone-step/)
+- [Configure a codebase](https://developer.harness.io/continuous-integration/use-harness-ci/use-harness-ci/codebase-configuration/create-and-configure-a-codebase)
+- [Git Clone step](https://developer.harness.io/continuous-integration/use-harness-ci/use-harness-ci/codebase-configuration/git-clone-step)
 - [Add and use text secrets](https://developer.harness.io/docs/platform/secrets/add-use-text-secrets)
 - [Connectors](https://developer.harness.io/harness-platform/3.0/in-harness-3.0/connectors)

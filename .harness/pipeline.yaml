@@ -1,11 +1,13 @@
-# Clone this repo with a GitHub connector, then prove two things:
-#   1. The workspace contains the application code.
-#   2. The git remote URL does not embed a token.
+# Clone this repo with a GitHub connector. cloneCodebase tells the CI stage
+# to fetch properties.ci.codebase before any step runs.
+#
+# A Git Clone step is a separate mechanism for an extra repository.
+# This pipeline does not use one. See the README.
 #
 # Create secret github-pat and connector githubconnector first
-# (see connectors/github.yaml). Paste this pipeline and replace
-# every # REPLACE: line. At runtime, set repoName to your fork
-# (for example your-user/ci-tidbits-clone-repo) and branch to main.
+# (see connectors/github-connector.yaml). Paste this pipeline and replace
+# every # REPLACE: line. At runtime, set repoName to owner/name
+# (this repo, or your fork).
 
 pipeline:
   name: Clone Repo Securely
@@ -41,8 +43,8 @@ pipeline:
           execution:
             steps:
               - step:
-                  name: Verify connector clone
-                  identifier: verify_connector_clone
+                  name: Verify codebase clone
+                  identifier: verify_codebase_clone
                   type: Run
                   spec:
                     image: python:3.12-slim
