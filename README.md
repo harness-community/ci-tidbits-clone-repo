@@ -8,9 +8,9 @@
 
 Before you can build, push, or deploy an application, the build machine needs a copy of the code. In Harness CI that copy is the pipeline **codebase**: the Git repository a Build stage clones when **Clone Codebase** is enabled.
 
-This tidbit gets that copy with a GitHub connector. `cloneCodebase: true` clones **this** repo into the workspace before any step runs. The pipeline stores `connectorRef`. The token, if you use one, stays in a Harness secret, and Harness masks it in logs.
+This tidbit gets that copy with a GitHub connector. `cloneCodebase: true` clones **this** repo into the workspace before any step runs. The pipeline stores `connectorRef`. The token stays in a Harness secret, and Harness masks it in logs.
 
-This repository is public, so a clone works without a personal access token. GitHub rate-limits anonymous traffic. A connector with a PAT authenticates the request and avoids that limit. The same PAT is what a private repository requires — the pipeline YAML does not change. See [Next steps](#next-steps).
+A Harness GitHub connector requires a username and a personal access token. Anonymous authentication is not available. Create a [fine-grained personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-fine-grained-personal-access-token) and set repository permission **Contents** to **Read-only**. That same token clones a private repository you own. See [Next steps](#next-steps).
 
 | Piece | Role |
 |---|---|
@@ -30,7 +30,7 @@ Before you start, make sure you have:
 
 - A Harness account with a **Project** (note its org + project identifiers).
 - Harness Cloud build credits (default on Harness-hosted runners). No delegate is required for this pipeline.
-- A GitHub account. A PAT (or fine-grained token with `Contents: Read`) is optional while this repo is public. Create one for the connector so the clone is authenticated.
+- A GitHub [fine-grained personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-fine-grained-personal-access-token) with repository permission **Contents: Read-only**. The connector cannot authenticate anonymously.
 
 ---
 
@@ -58,7 +58,7 @@ This tidbit creates the Harness secret, the GitHub connector, and the pipeline i
 
 ## Step 2 — Secret and connector
 
-1. **Secret.** Project Settings → Secrets → Text. Id `github-pat`. Paste the GitHub token. A public repo can be cloned without it; the token authenticates the connector so GitHub does not treat the clone as anonymous. Do not commit the token, and do not put it in pipeline YAML.
+1. **Token, then secret.** Create a [fine-grained personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-fine-grained-personal-access-token). Under repository permissions, set **Contents** to **Read-only**. Then in Harness: Project Settings → Secrets → Text. Id `github-pat`. Paste the token. Do not commit the token, and do not put it in pipeline YAML.
 
 2. **GitHub connector.** Project Settings → Connectors → New Connector → GitHub, or paste [`connectors/github-connector.yaml`](./connectors/github-connector.yaml). Replace every `# REPLACE:` line.
 
@@ -155,7 +155,7 @@ This pipeline does not use one. A [Git Clone step](https://developer.harness.io/
 
 **Do not print `git config`.** A credential helper or `http.extraheader` can hold the token for the clone. `git remote -v` is the check; dumping config can leak the secret into the build log.
 
-**Anonymous clone is rate-limited.** This repo is public, so a token is not required to read it. GitHub still throttles unauthenticated clones. Keep `github-pat` on the connector.
+**Connector has no anonymous option.** Authentication on the GitHub connector is Username and Token, GitHub App, or OAuth. This tidbit uses Username and Token with secret `github-pat`. The token needs **Contents: Read-only**.
 
 ---
 
@@ -170,6 +170,7 @@ This pipeline does not use one. A [Git Clone step](https://developer.harness.io/
 
 ## Resources
 
+- [Create a fine-grained personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-fine-grained-personal-access-token) — repository permission **Contents: Read-only**
 - [Configure a codebase](https://developer.harness.io/continuous-integration/use-harness-ci/use-harness-ci/codebase-configuration/create-and-configure-a-codebase)
 - [Git Clone step](https://developer.harness.io/continuous-integration/use-harness-ci/use-harness-ci/codebase-configuration/git-clone-step)
 - [Add and use text secrets](https://developer.harness.io/docs/platform/secrets/add-use-text-secrets)
