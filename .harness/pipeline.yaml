@@ -1,0 +1,83 @@
+# Clone this repo with a GitHub connector, then prove two things:
+#   1. The workspace contains the application code.
+#   2. The git remote URL does not embed a token.
+#
+# Create secret github-pat and connector githubconnector first
+# (see connectors/github.yaml). Paste this pipeline and replace
+# every # REPLACE: line. At runtime, set repoName to your fork
+# (for example your-user/ci-tidbits-clone-repo) and branch to main.
+
+pipeline:
+  name: Clone Repo Securely
+  identifier: clone_repo_securely
+  # REPLACE
+  projectIdentifier: <YOUR_PROJECT_IDENTIFIER>
+  # REPLACE
+  orgIdentifier: <YOUR_ORG_IDENTIFIER>
+  tags: {}
+  properties:
+    ci:
+      codebase:
+        connectorRef: githubconnector
+        # REPLACE at runtime: owner/name of your fork
+        repoName: <+input>
+        build:
+          type: branch
+          spec:
+            branch: main
+  stages:
+    - stage:
+        name: Clone
+        identifier: clone
+        type: CI
+        spec:
+          cloneCodebase: true
+          platform:
+            os: Linux
+            arch: Amd64
+          runtime:
+            type: Cloud
+            spec: {}
+          execution:
+            steps:
+              - step:
+                  name: Verify connector clone
+                  identifier: verify_connector_clone
+                  type: Run
+                  spec:
+                    image: python:3.12-slim
+                    shell: Sh
+                    command: |-
+                      set -eu
+                      echo "=== files cloned into the workspace ==="
+                      find . -type f -not -path './.git/*' | sort
+                      test -f app/main.py
+                      test -f tests/test_main.py
+
+                      echo "=== git remote (credential must not be in the URL) ==="
+                      git remote -v
+                      if git remote -v | grep -E '://[^/]*@|ghp_|github_pat_'; then
+                        echo "Remote URL contains a credential. Clone via connectorRef instead of embedding a token." >&2
+                        exit 1
+                      fi
+
+                      echo "=== HEAD ==="
+                      git rev-parse --short HEAD
+                      git log -1 --oneline
+              - step:
+                  name: Run cloned app
+                  identifier: run_cloned_app
+                  type: Run
+                  spec:
+                    image: python:3.12-slim
+                    shell: Sh
+                    command: |-
+                      set -eu
+                      python -m unittest tests.test_main -v
+                      python -m app.main
+        failureStrategies:
+          - onFailure:
+              errors:
+                - AllErrors
+              action:
+                type: MarkAsFailure
