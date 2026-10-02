@@ -36,7 +36,7 @@ Before you start, make sure you have:
 
 ## Step 1 — Review this repo
 
-The application under `app/` is the code the pipeline fetches. No local Python setup is required. Point **Repository Name** at this public repo, or fork it first if you want a copy you can mark private later.
+The application under `app/` is the code the pipeline fetches. No local Python setup is required. Point **Repository Name** at this public repo: `harness-community/ci-tidbits-clone-repo`.
 
 ```
 .
@@ -81,7 +81,7 @@ The application under `app/` is the code the pipeline fetches. No local Python s
 ## Step 4 — Run the pipeline (expect a GREEN build)
 
 1. Click **Run**.
-2. For **Repository Name**, enter `owner/ci-tidbits-clone-repo` — this repo, or your fork.
+2. For **Repository Name**, enter `harness-community/ci-tidbits-clone-repo`.
 3. Keep branch `main`. Click **Run Pipeline**.
 
 Harness clones the codebase with the connector **before** the steps run. Then:
@@ -159,7 +159,7 @@ This pipeline does not use one. A [Git Clone step](https://developer.harness.io/
 
 ## Next steps
 
-- **Private repo.** Fork this repo, mark the fork private, and re-run with that `owner/name`. An anonymous clone fails. The PAT on `githubconnector` still works, and the pipeline YAML does not change.
+- **Private repo.** GitHub does not let you change the visibility of a fork, so this public repo has to stay public. Try the same pipeline on a private repository you own. The PAT needs **Contents** access to that repo. Set **Repository Name** to `owner/name`. The pipeline YAML does not change, and the clone succeeds.
 - **Second repository.** Add a Git Clone step (see above) when one stage needs this codebase and another repo.
 - **GitHub App.** Swap the PAT for a GitHub App connector when you want short-lived installation tokens instead of a long-lived PAT.
 - **SSH.** Use an SSH Git connector and a Harness SSH key secret when the provider does not allow HTTPS tokens.

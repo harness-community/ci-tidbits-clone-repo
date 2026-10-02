@@ -6,8 +6,8 @@
 #
 # Create secret github-pat and connector githubconnector first
 # (see connectors/github-connector.yaml). Paste this pipeline and replace
-# every # REPLACE: line. At runtime, set repoName to owner/name
-# (this repo, or your fork).
+# every # REPLACE: line. At runtime, set repoName to
+# harness-community/ci-tidbits-clone-repo.
 
 pipeline:
   name: Clone Repo Securely
@@ -21,7 +21,7 @@ pipeline:
     ci:
       codebase:
         connectorRef: githubconnector
-        # REPLACE at runtime: owner/name of your fork
+        # REPLACE at runtime: harness-community/ci-tidbits-clone-repo
         repoName: <+input>
         build:
           type: branch
