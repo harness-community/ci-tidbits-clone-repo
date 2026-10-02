@@ -47,7 +47,8 @@ pipeline:
                   identifier: verify_codebase_clone
                   type: Run
                   spec:
-                    image: python:3.12-slim
+                    # python images do not include git; this step calls git remote.
+                    image: alpine/git
                     shell: Sh
                     command: |-
                       set -eu

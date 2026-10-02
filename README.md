@@ -86,7 +86,7 @@ The application under `app/` is the code the pipeline fetches. No local Python s
 
 Harness clones the codebase with the connector **before** the steps run. Then:
 
-- **Verify codebase clone** requires `app/main.py` at the workspace root and fails if `git remote -v` contains `@` credentials or a `ghp_` / `github_pat_` token.
+- **Verify codebase clone** runs in `alpine/git` (the Python image has no `git`). It requires `app/main.py` at the workspace root and fails if `git remote -v` contains `@` credentials or a `ghp_` / `github_pat_` token.
 - **Run cloned app** executes `python -m unittest tests.test_main` and prints the greeting from the cloned `app/main.py`.
 
 **Green is the correct outcome.** The build fetched code with a credential that never appeared in Git.
