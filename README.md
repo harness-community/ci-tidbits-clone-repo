@@ -52,6 +52,8 @@ The application under `app/` is the code the pipeline fetches. No local Python s
 └── README.md
 ```
 
+This tidbit creates the Harness secret, the GitHub connector, and the pipeline in the visual editors. The same connector and pipeline are in this repo as YAML: [`connectors/github-connector.yaml`](./connectors/github-connector.yaml) and [`.harness/pipeline.yaml`](./.harness/pipeline.yaml). Apply those files with the [Harness CLI](https://developer.harness.io/docs/platform/automation/cli/install/) or another headless path. The token is not in Git. Create the `github-pat` secret from the CLI by passing the token as the value.
+
 ---
 
 ## Step 2 — Secret and connector
